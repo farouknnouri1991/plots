@@ -45,8 +45,9 @@ ui<-fluidPage(
       
       #filters: 
         #Regions
-      checkboxGroupInput(inputId = "selected_region", label=p("Choose a Variable for X axis"), choices= as.list(unique(dta$Region)) ),
-
+      checkboxGroupInput(inputId = "selected_region", label=p("Choose a region"), choices= as.list(unique(dta$Region)) ),
+        #
+       checkboxGroupInput(inputId = "selected_area", label=p("Choose a coutry"), choices= as.list(unique(dta$Area_code)) ),
       #plottype
       #which geom
       selectInput(inputId = "selected_geom", label=p("Choose a plot type", style="font-family:'times'") ,
@@ -76,8 +77,6 @@ ui<-fluidPage(
 server<-function(input, output){
   
     output$reactiveVars<-renderText(paste("Vous avez selectionne les variable: ", input$selected_var1, input$selected_var2))
-    output$reactiveRange<-renderText(paste("la variable apparaitrea entre", 
-                                         input$selected_range[1], "and",  input$selected_range[2]))
     
     
     output$reactiveplot<-renderPlotly ({
@@ -88,9 +87,14 @@ server<-function(input, output){
       
       y<-sym(input$selected_var2)
       
-      region<-input$selected_region
       
-      dta<-dta %>% filter(!is.na(!!y), Region %in% region) 
+      
+      #if (!is.null(input$selected_region)){region<-input$selected_region; dta<-dta %>% filter(Region%in%region)}
+      if (!is.null(input$selected_area)|!is.null(input$selected_region)){
+        dta<-dta %>% filter(Area_code%in%input$selected_area|Region%in%input$selected_region)}
+     
+      dta<-dta %>% filter(!is.na(!!y))
+      
       
       
       
