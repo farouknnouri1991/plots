@@ -45,6 +45,10 @@ ui<-fluidPage(
                 #Select_variables
                 uiOutput("axe_x"), #( given the database==>reactive input==>comes from output and is Ui object: uiOutput)
                 uiOutput("axe_y"),
+                
+                #select_filters:
+                
+                textInput("quickfilter_expression", label="Enter a filtering expression"),
            
                 #Slect_plottype
                   #which geom
@@ -131,29 +135,14 @@ server<-function(input, output){
                                   #paging=FALSE,
                                   scrollY=TRUE,
                                   stateSave=TRUE,
-                                  fixedHeader=TRUE,
-                                  fixedColumns = list(leftColumns =4 , rightColumns = 0)
-                                  #autoWidth = TRUE,
-                                  #columnDefs = list(list(width = '1%', targets = list(1:ncol(data_post_mutation))))
+                                  fixedHeader=TRUE
+                                  #fixedColumns = list(leftColumns =4 , rightColumns = 0)autoWidth = TRUE,columnDefs = list(list(width = '1%', targets = list(1:ncol(data_post_mutation))))
                                   )) %>% formatStyle(columns = names(data_post_mutation),
                                                     fontFamily = "times",
                                                     fontSize = "14px",
-                                                    #color = '#ed1c16',
-                                                    #fontWeight = 'bold',
-                                                    #paddingRight = "1em",
-                                                    #borderRightWidth = "1px",
-                                                    #borderRightStyle = "solid",
-                                                    #borderRightColor = "white",
-                                                    #borderBottomColor = "rgb(255, 255, 255)",
-                                                    
-                                                    
-                                                    
-                                                    #borderBottomStyle = "solid",
-                                                    #borderBottomWidth = "1px",
-                                                    #borderCollapse = "collapse",
-                                                    #verticalAlign = "middle",
+                                                    #color = '#ed1c16',fontWeight = 'bold',paddingRight = "1em",borderRightWidth = "1px",borderRightStyle = "solid",borderRightColor = "white",borderBottomColor = "rgb(255, 255, 255)",#borderBottomStyle = "solid",#borderBottomWidth = "1px",#borderCollapse = "collapse",#verticalAlign = "middle",
                                                     textAlign = "center",
-                                                    wordWrap = "break-word",
+                                                    wordWrap = "break-word"
                                                     #backgroundColor = 'white'
                                                     )
 
@@ -179,6 +168,8 @@ server<-function(input, output){
         output$size<-renderUI({
           selectInput(inputId = "selected_size", label=p("Choose a size"), names(dataset()) , selected=NULL)})
         
+        
+       
         
      #1-2-Making the Plot----
       output$reactiveplot<-renderPlotly ({
@@ -212,8 +203,17 @@ server<-function(input, output){
             }
         }
         
-     #New Way----
+     #New Way----To identify linetype and shape as variables with the var they reprseent
            
+        
+          #filtering:
+          if(input$quickfilter_expression!=""){
+            
+            expr<-input$quickfilter_expression
+            
+            dta<-dta %>% filter(!!parse_expr(expr))}
+          
+          #transforming to long format
           c1<-c(input$selected_var1, input$selected_color,input$selected_size); n1=length(c1)+1
           c2<-c(input$selected_var1, input$selected_color,input$selected_size, input$selected_var2); n2=length(c2)
            
@@ -223,7 +223,7 @@ server<-function(input, output){
            dta_long<-gather(dta1,key=Indicator, value=Value, n1:n2) %>% filter(!is.na(Value))
            
            gg<-ggplot(dta_long, mapping=aes(x=!!x, y=Value,color=!!color))+geom(aes(linetype=Indicator, shape=Indicator))+
-           labs(title= "this is the plot", y=input$seleceted_var2)
+           labs(title= "this is the plot", y=as.character(input$seleceted_var2))
            s<-ggplotly(gg)
            s
         
@@ -233,14 +233,6 @@ server<-function(input, output){
         
 
         
-        
-        
-        
-        
-        
-        
-        
-        
   #2- Summary stats function----
     #Reading-reactively- Pivot arguments
       
@@ -248,14 +240,14 @@ server<-function(input, output){
         output$columns<-renderUI({selectInput("selected_columns", label="choose the rows to tabulate", names( dataset() ), multiple = T )})
         output$pivot_var<-renderUI({selectInput("selected_pivot_var", label="choose the vars to be considered in calculations", names( dataset() ) )})
         
-        output$calculations<-renderUI({selectInput("selected_calculation", label="choose summary stats", 
-                            choices = c("n", "n_distinct", "mean", "sd", "min", "max") )})#no need for it being interactive..
+        output$calculations<-renderUI({selectizeInput("selected_calculation", label="choose summary stats", 
+                            choices = c("n", "n_distinct", "mean", "sd", "min", "max"), multiple = T )})#no need for it being interactive..
     
     #Building Pivot table
         output$pivottable<-renderPivottabler({
           
         calculation<-paste0(input$selected_calculation, "(" , input$selected_pivot_var , ", na.rm=TRUE)" )
-        if (input$selected_calculation=="n") {calculation= paste0(input$selected_calculation, "(,na.rm=TRUE)")}
+        if (input$selected_calculation=="n") {calculation= paste0(input$selected_calculation, "()")}
         pivot<-qhpvt(dataFrame = dataset(), columns=input$selected_columns, rows=input$selected_rows,
                      calculations =calculation)
         
