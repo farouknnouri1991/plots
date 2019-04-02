@@ -1,4 +1,4 @@
-library(shiny); library(shinythemes); library(tidyverse); library(plotly); library(plm)
+library(shiny); library(shinythemes);library(shinyjs); library(tidyverse); library(plotly); library(plm)
 library(DT); library(pivottabler); library(scales); library(rlang); library(goeveg)
 #dta<-read.csv("dta.csv") %>% select(-1); L<-as.list(names(dta)); names(L)<-names(dta)
 #dta<-read.csv("Agriculture.csv") 
@@ -15,7 +15,18 @@ ui<-fluidPage(
   theme=shinytheme("flatly"),
    
   titlePanel("An application for plotting and Summary stats"),
-  
+
+  #I don't understand those inline CS commands
+  inlineCSS("
+            #mytable1 .table th {
+             text-align: left;
+            }
+
+            #mytable1 .table td {
+             text-align: left;
+            }
+            "
+  ),
     
       tabsetPanel(
       #0- The datset----
@@ -35,7 +46,9 @@ ui<-fluidPage(
                       value="dataset %>% "),
                   
                   submitButton(text="Submit"),
-                    DTOutput("DaTaset")
+                  
+                  
+                  tabsetPanel(DTOutput("DaTaset"))#tabsetpanel
                   )
                   
                   , 
@@ -113,7 +126,8 @@ ui<-fluidPage(
         ),
         #The sumstats:
         mainPanel(
-        pivottablerOutput("pivottable")
+        pivottablerOutput("pivottable_asdataframe")
+        #DTOutput("pivottable_asdataframe")
         )
       )
       
@@ -159,7 +173,7 @@ server<-function(input, output){
         
         output$DaTaset<-renderDT({ 
           
-          datatable(dataset(), class="display",
+          datatable(dataset(), class="display cell-berder compact",
                    selection = list(target='row+column'),
                    filter='top',
                    editable = TRUE,
@@ -168,7 +182,7 @@ server<-function(input, output){
                                   #paging=FALSE,
                                   scrollY=TRUE,
                                   stateSave=TRUE,#so that any transformation by the user will be saved==>and called back lately using syntax:dataset()[input$dataset_rows_all,]
-                                  fixedHeader=TRUE
+                                  fixedHeader=TRUE#this is NOT COMPATIBLE WITH SCROLLING since the scorllig splits the data//https://datatables.net/download/compatibility
                                   #fixedColumns = list(leftColumns =4 , rightColumns = 0)autoWidth = TRUE,columnDefs = list(list(width = '1%', targets = list(1:ncol(data_post_mutation))))
                                   )) %>% formatStyle(columns = names(dataset()),
                                                     fontFamily = "times",
@@ -315,15 +329,80 @@ server<-function(input, output){
         output$calculations<-renderUI({selectizeInput("selected_calculation", label="choose summary stats", 
                             choices = c("n", "n_distinct", "mean", "sd", "min", "max", "median", "cv"), multiple = T )})#no need for it being interactive..
     
-    #2-2- Building Pivot table
-        output$pivottable<-renderPivottabler({
-        dta<-dta<-dataset()[input$DaTaset_rows_all,]  
-        calculation<-paste0(input$selected_calculation, "(" , input$selected_pivot_var , ", na.rm=TRUE)" )
-        if (input$selected_calculation=="n") {calculation= paste0(input$selected_calculation, "()")}
-        pivot<-qhpvt(dataFrame = dta, columns=input$selected_columns, rows=input$selected_rows,
-                     calculations =calculation)
+    #2-2- Building reactive PivoTable
+        #Creer  PivotTable reactive:
+        
+        PivoTable<-reactive({
+          
+          #Reading the Dataset (the instance as modified by user)
+          
+          dta<-dta<-dataset()[input$DaTaset_rows_all,]  
+          nrows=length(input$selected_rows); ncols=length(input$selected_columns); 
+          ncalculations=length(input$selected_calculation); nvars<-length(input$selected_pivot_var)
+          
+                            #calculation<-paste0(input$selected_calculation, "(" , input$selected_pivot_var , ", na.rm=TRUE)" )
+                            #if (input$selected_calculation=="n") {calculation= paste0(input$selected_calculation, "()")}
+                            #pt<-qpvt(dataFrame = dta, columns=input$selected_columns, rows=input$selected_rows,
+                            #           calculations =calculation)
+          
+          #construisons un vecteur cahracter des calculs (multiplions les calculs avel les vars)
+          c<-matrix(nrow=ncalculations,ncol=nvars)
+          for (i in 1:ncalculations )
+            {for (j in 1: nvars) {
+            
+              c[i, j]<-paste0(input$selected_calculation[[i]], "(" , input$selected_pivot_var[[j]] , ", na.rm=TRUE)" )
+              
+              if (input$selected_calculation[[i]]=="n") {c[i,j]= "n()"}
+            }
+          }
+          
+          calculation<-as.vector(c)
+          
+          
+      pt <- PivotTable$new()
+      
+      pt$addData( dta)
+      
+      if (ncols!=0){
+      for (i in 1: ncols){
+      pt$addColumnDataGroups(input$selected_columns[[i]])
+      }}
+      
+      if (nrows!=0){##very essential condition hhh
+      for (i in 1: nrows){
+      pt$addRowDataGroups(input$selected_rows[[i]])
+      }}
+      
+      for (i in 1: length(calculation)){
+      pt$defineCalculation(calculationName=calculation[i], summariseExpression=calculation[i])
+      }
+      
+      pt$evaluatePivot()
+      
+      pt<-pivottabler(pt)
+      
+      #pivot<-pt$asDataFrame()
         
         })
+        
+    #Rendering as pivottable
+        output$pivottable_asdataframe<-renderPivottabler({PivoTable()})
+        
+        
+        #Rendering PivoTable as dataframe (DT)
+        
+        #output$pivottable_asdataframe<-renderDT({
+         #datatable(PivoTable())
+          #       filter='top', extensions = c("FixedHeader"),
+           #        options = list(scrollX = TRUE,
+            #                      #paging=FALSE,
+             #                     scrollY=TRUE,
+              #                    fixedHeader=TRUE#this is NOT COMPATIBLE WITH SCROLLING since the scorllig splits the data//https://datatables.net/download/compatibility
+               #                   #fixedColumns = list(leftColumns =4 , rightColumns = 0)autoWidth = TRUE,columnDefs = list(list(width = '1%', targets = list(1:ncol(data_post_mutation))))
+                #                  ))
+        
+     
+        #})
  
         
 }
@@ -333,13 +412,11 @@ server<-function(input, output){
 #- III- APPLICATION ----
 A<-shinyApp(ui=ui, server=server)
 
-
+A
 
 #runApp(A, display.mode = "showcase") this or run in command line: runApp("app-1-lesson4.R", display.mode = "showcase")
 #?runApp
 #A
 #A<-function(dta){A}
 #A(GGDC_large)
-
-
 
