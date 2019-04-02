@@ -330,53 +330,53 @@ server<-function(input, output){
                             choices = c("n", "n_distinct", "mean", "sd", "min", "max", "median", "cv"), multiple = T )})#no need for it being interactive..
     
     #2-2- Building reactive PivoTable
-        #Creer  PivotTable reactive:
+      #Creer  PivotTable reactive:
+      
+      PivoTable<-reactive({
         
-        PivoTable<-reactive({
-          
-          #Reading the Dataset (the instance as modified by user)
-          
-          dta<-dta<-dataset()[input$DaTaset_rows_all,]  
-          nrows=length(input$selected_rows); ncols=length(input$selected_columns); 
-          ncalculations=length(input$selected_calculation); nvars<-length(input$selected_pivot_var)
-          
-                            #calculation<-paste0(input$selected_calculation, "(" , input$selected_pivot_var , ", na.rm=TRUE)" )
-                            #if (input$selected_calculation=="n") {calculation= paste0(input$selected_calculation, "()")}
-                            #pt<-qpvt(dataFrame = dta, columns=input$selected_columns, rows=input$selected_rows,
-                            #           calculations =calculation)
-          
-          #construisons un vecteur cahracter des calculs (multiplions les calculs avel les vars)
-          c<-matrix(nrow=ncalculations,ncol=nvars)
-          for (i in 1:ncalculations )
-            {for (j in 1: nvars) {
-            
-              c[i, j]<-paste0(input$selected_calculation[[i]], "(" , input$selected_pivot_var[[j]] , ", na.rm=TRUE)" )
-              
-              if (input$selected_calculation[[i]]=="n") {c[i,j]= "n()"}
-            }
-          }
-          
-          calculation<-as.vector(c)
-          
-          
-      pt <- PivotTable$new()
-      
-      pt$addData( dta)
-      
-      if (ncols!=0){
-      for (i in 1: ncols){
-      pt$addColumnDataGroups(input$selected_columns[[i]])
-      }}
-      
-      if (nrows!=0){##very essential condition hhh
-      for (i in 1: nrows){
-      pt$addRowDataGroups(input$selected_rows[[i]])
-      }}
-      
-      for (i in 1: length(calculation)){
-      pt$defineCalculation(calculationName=calculation[i], summariseExpression=calculation[i])
-      }
-      
+        #Reading the Dataset (the instance as modified by user)
+        
+        dta<-dta<-dataset()[input$DaTaset_rows_all,]  
+        nrows=length(input$selected_rows); ncols=length(input$selected_columns); 
+        ncalculations=length(input$selected_calculation); nvars<-length(input$selected_pivot_var)
+        
+                          #calculation<-paste0(input$selected_calculation, "(" , input$selected_pivot_var , ", na.rm=TRUE)" )
+                          #if (input$selected_calculation=="n") {calculation= paste0(input$selected_calculation, "()")}
+                          #pt<-qpvt(dataFrame = dta, columns=input$selected_columns, rows=input$selected_rows,
+                          #           calculations =calculation)
+        
+        #construisons un vecteur cahracter des calculs (multiplions les calculs avel les vars)
+        c<-matrix(nrow=ncalculations,ncol=nvars)
+        for (i in 1:ncalculations ){for (j in 1: nvars) {
+            c[i, j]<-paste0(input$selected_calculation[[i]], "(" , input$selected_pivot_var[[j]] , ", na.rm=TRUE)" )
+            if (input$selected_calculation[[i]]=="n") {c[i,j]= "n()"}}}
+        
+        calculation<-as.vector(c)
+        
+        #Constrisons la PivotTable: usual
+        pt <- PivotTable$new()
+        
+        pt$addData( dta)
+        
+        if (ncols!=0){for (i in 1: ncols){
+        pt$addColumnDataGroups(input$selected_columns[[i]])
+        }}
+        
+        if (nrows!=0){##very essential condition hhh
+        for (i in 1: nrows){
+        pt$addRowDataGroups(input$selected_rows[[i]])
+        }}
+        
+        for (i in 1: length(calculation)){
+        pt$defineCalculation(calculationName=calculation[i], summariseExpression=calculation[i])
+        }
+                        #Defining Theme
+                        simpleBlueTheme <- list(
+                        fontName="Verdana, Arial",headerBackgroundColor = "rgb(68, 114, 196)",headerColor = "rgb(255, 255, 255)",
+                        cellBackgroundColor = "rgb(255, 255, 255)",cellColor = "rgb(0, 0, 0)",totalBackgroundColor = "rgb(186, 202, 233)",
+                        totalColor = "rgb(0, 0, 0)",borderColor = "rgb(48, 84, 150)"
+                         )
+                        pt$theme <- simpleBlueTheme
       pt$evaluatePivot()
       
       pt<-pivottabler(pt)
