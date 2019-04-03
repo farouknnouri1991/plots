@@ -1,3 +1,6 @@
+install.packages(c("shiny", "shinythemes","shinyjs","tidyverse","plotly","plm","DT","pivottabler","scales","rlang","goeveg"))
+
+
 library(shiny); library(shinythemes);library(shinyjs); library(tidyverse); library(plotly); library(plm)
 library(DT); library(pivottabler); library(scales); library(rlang); library(goeveg)
 #dta<-read.csv("dta.csv") %>% select(-1); L<-as.list(names(dta)); names(L)<-names(dta)
@@ -43,7 +46,7 @@ ui<-fluidPage(
                   
                   textAreaInput("transform_dataset", "Write the command", 
                       width="100px", height="100px", resize=NULL,
-                      value="dataset %>% "),
+                      placeholder ="dataset %>% "),
                   
                   submitButton(text="Submit"),
                   
@@ -97,7 +100,6 @@ ui<-fluidPage(
               
             textAreaInput("plot_expression", "Write the plotting command", 
                       width="100px", height="100px", resize=NULL,
-                      value="ggplot(dataset())+", 
                       placeholder = "ggplot(dataset())+geom_point(aes(x=Year, y=Year))"),
             br(),br(),
               
@@ -173,7 +175,7 @@ server<-function(input, output){
         
         output$DaTaset<-renderDT({ 
           
-          datatable(dataset(), class="display cell-berder compact",
+          datatable(dataset() %>% mutate(NONE="NONE"), class="display cell-berder compact",
                    selection = list(target='row+column'),
                    filter='top',
                    editable = TRUE,
