@@ -1,16 +1,19 @@
-install.packages(c("shiny", "shinythemes","shinyjs","tidyverse","plotly","plm","DT","pivottabler","scales","rlang","goeveg"))
-
+#0- Prerequisites----
+{if (!require("shiny"))         install.packages("shiny")
+  if (!require("shinyjs"))      install.packages("shinyjs")
+  if (!require("tidyverse"))    install.packages("tidyverse")
+  if (!require("plotly"))       install.packages("plotly")
+  if (!require("plm"))          install.packages("plm")
+  if (!require("DT"))           install.packages("DT")
+  if (!require("pivottabler"))  install.packages("pivottabler")
+  if (!require("scales"))       install.packages("scales")
+  if (!require("rlang"))        install.packages("rlang")
+  if (!require("goeveg"))       install.packages("goeveg")
+  }
 
 library(shiny); library(shinythemes);library(shinyjs); library(tidyverse); library(plotly); library(plm)
 library(DT); library(pivottabler); library(scales); library(rlang); library(goeveg)
-#dta<-read.csv("dta.csv") %>% select(-1); L<-as.list(names(dta)); names(L)<-names(dta)
-#dta<-read.csv("Agriculture.csv") 
-#dta<-dta; L<-as.list(names(dta)); names(L)<-names(dta)
-#in applying to GGDC: no need for large format: 
-#You can filter on indicator names and process(mutate, group by, etc) data within server.
-################################## Allow for other data transformation (textArea) dta<-....groupby, filter etc...gather, transform...
 
-plottypes<-list(geom_path=geom_path,geom_point=geom_point, geom_boxplot=geom_boxplot, geom_density=geom_density)
 
 #- I - USER INTERFACE ----
 
@@ -18,31 +21,15 @@ ui<-fluidPage(
   theme=shinytheme("flatly"),
    
   titlePanel("An application for plotting and Summary stats"),
-
-  #I don't understand those inline CS commands
-  inlineCSS("
-            #mytable1 .table th {
-             text-align: left;
-            }
-
-            #mytable1 .table td {
-             text-align: left;
-            }
-            "
-  ),
-    
       tabsetPanel(
+        
       #0- The datset----
         tabPanel( title= "The DataSet",
                   
                   #Select_DataBase
+                  fileInput("selected_DB",label="Choose a 'csv' extension Dataset" ),
                   
-                  
-                  fileInput("selected_DB",label="Choose a Dataset" ),
-                  
-                  #0 Mutation
-                  
-                  #textInput("selected_mutate_expr", "Create a new variable"),
+                  #Mutate expression
                   
                   textAreaInput("transform_dataset", "Write the command", 
                       width="100px", height="100px", resize=NULL,
@@ -50,43 +37,46 @@ ui<-fluidPage(
                   
                   submitButton(text="Submit"),
                   
-                  
-                  tabsetPanel(DTOutput("DaTaset"))#tabsetpanel
+                  #Exhibit the Dataset
+                  tabsetPanel(
+                    DTOutput("DaTaset")
+                    )#tabsetpanel
                   )
                   
                   , 
         
       #1- Plot_inputs & outputs_Panel----
       
-        tabPanel(title="Plotting Option",
+        tabPanel(title="Plotting Panel",
+                 
           #The Options
           sidebarPanel(width=3,
-              helpText("Please enter your plotting command & refer to dataset as dataset()
+              helpText("Please enter your plotting command & refer to dataset as dataset() or 
                        Or Use the interface"),
               
-              #Do it using the choices below   
+              #1-1- Using the Interface choices:  
                 #Select_variables
                 uiOutput("axe_x"), #( given the database==>reactive input==>comes from output and is Ui object: uiOutput)
                 uiOutput("axe_y"),
                 
-                #select_filters:
+                #Select_filters:
                 
                 textInput("quickfilter_expression", label="Enter a filtering expression"),
            
                 #Slect_plottype
                   #which geom
-                selectInput(inputId = "selected_geom", label="Choose a plot type" ,
-                            choices= names(list(geom_path=geom_path,geom_point=geom_point,geom_boxplot=geom_boxplot,geom_density=geom_density)) ), 
+                  selectInput(inputId = "selected_geom", label="Choose a plot type" ,
+                              choices= c("geom_path","geom_point","geom_boxplot","geom_density", "geom_smooth") ), 
                 
                   #which color
-                uiOutput("color"),
+                  uiOutput("color"),
                 
                   #which size
-                uiOutput("size"),
+                  uiOutput("size"),
                   #which alpha
-                uiOutput("alpha"),
+                  uiOutput("alpha"),
                 
-                #Rescaling button
+                #Rescaling_button
                 checkboxInput("rescale",label="clic to rescale all Y varaibles" ), 
                 
                 #Button d'actualisation
@@ -94,28 +84,34 @@ ui<-fluidPage(
           
                
           
-          #The Plot:
+          #2- The Plot Area:
           mainPanel(
-             #when users choose to Write the plotting commands 
+            
+             #Manual entry: when users choose to Write the plotting commands 
               
-            textAreaInput("plot_expression", "Write the plotting command", 
-                      width="100px", height="100px", resize=NULL,
-                      placeholder = "ggplot(dataset())+geom_point(aes(x=Year, y=Year))"),
-            br(),br(),
+                textAreaInput("plot_expression", "Write the plotting command", 
+                          width="100px", height="100px", resize=NULL,
+                          placeholder = "ggplot(dataset())+geom_point(aes(x=Year, y=Year)) {or dataset()[input$DaTaset_rows_all,]}"),
+                br(),br(),
+                
+              #Exhibiting The Plot 
               
-            plotlyOutput("reactiveplot"), 
-             #Dowload button
-                fluidRow(
-                selectInput("download_format","choose the format of download", choices=list("png","html"), multiple=FALSE),
-                downloadButton('PlotDownload')),
-              #Accessing events
-                verbatimTextOutput("selected")
-          )
-          ),
+                  plotlyOutput("reactiveplot"), 
+              
+               #Dowload The Plot
+                  fluidRow(
+                  selectInput("download_format","choose the format of download", choices=list("png","html"), multiple=FALSE),
+                  downloadButton('PlotDownload')),
+              
+                #Accessing events
+                  verbatimTextOutput("selected")
+            )
+            ),
                 
       #2- Summary statistics_inputs & output_Panel----
         
-        tabPanel(title="Summary statistics options",
+        tabPanel(title="Summary Statistics Panel",
+                 
         #The Options:
           sidebarPanel(
                 #selet rows, columns and calculations:
@@ -126,7 +122,8 @@ ui<-fluidPage(
                 
                 submitButton(text="Submit")
         ),
-        #The sumstats:
+        #Exhibiting The Summary Statistics: as pivottable or as Datatable
+        
         mainPanel(
         pivottablerOutput("pivottable_asdataframe")
         #DTOutput("pivottable_asdataframe")
@@ -153,19 +150,14 @@ server<-function(input, output){
   
   #0-reactive dta on selected DB----
         dataset<-reactive({ 
-                            
+                            #Reads only csv files (should check if (input$selected_DB$datapath is csv or other kind)
                             dataset<-read.csv(input$selected_DB$datapath)
+                            
                             data_post_mutation<-dataset
-                            
-                            #if(input$selected_mutate_expr!=""){
-                             # expr<-input$selected_mutate_expr
-                              #data_post_mutation<-dataset %>% mutate(!!parse_expr(expr))}
-                            
-                            if(input$transform_dataset!=""){
-                              expr<-input$transform_dataset
+                            if(input$transform_dataset!=""){expr<-input$transform_dataset
                               data_post_mutation<-eval(parse_expr(expr))}
                             
-                            data_post_mutation
+                            data_post_mutation %>% mutate(NONE="NONE")
         
                           }) 
                                   #reactive ++ to read it each time it changed (inout$selected_DB) and store it reactively
@@ -175,7 +167,7 @@ server<-function(input, output){
         
         output$DaTaset<-renderDT({ 
           
-          datatable(dataset() %>% mutate(NONE="NONE"), class="display cell-berder compact",
+          datatable(dataset(), class="display cell-border compact",
                    selection = list(target='row+column'),
                    filter='top',
                    editable = TRUE,
@@ -220,32 +212,28 @@ server<-function(input, output){
        
       #1-2-1- Creating a reactive Plot----
         Plot<-  reactive({
-          #If user choosed to enter his own plot commands
           
-          if (input$plot_expression!=""){
-                                          expr<-input$plot_expression
+          #If user choosed to enter his own plot commands:read the expression and evaluate it: so easy
+          
+          if (input$plot_expression!=""){expr<-input$plot_expression
                                           
-                                          eval(parse_expr(expr))
-                                          }
+                                          eval(parse_expr(expr))}
           
-          
+          #If user choosed to use the interface
+ 
           else{ #do the entire work below
           
-          
+          #read the dataset ( the instance resulting from O-1 section: renderDT, thanks to option saveState=TRUE )
           dta<-dataset()[input$DaTaset_rows_all,]
       
-        #Reading (transfoming) inputs to be used by dplyr functions(ggplot, filter,etc)
-          #dta<-input$dataset_state #dta<-dataTableProxy("dataset") #dta<-reloadData(dta)
-          
-             #read the dataset ( the instance resulting from O-1 section: renderDT, thanks to option saveState=TRUE )
+        #A- Reading (transfoming) inputs to be used by dplyr functions(ggplot, filter,etc)
+
               x<-sym(input$selected_var1);color<-sym(input$selected_color);size<-sym(input$selected_size)# transforming character arguments to symbols! 
-              
-              geom<-switch(input$selected_geom, "geom_path"=plottypes[["geom_path"]],"geom_point"=plottypes[["geom_point"]], 
-                           "geom_boxplot"=plottypes[["geom_boxplot"]],"geom_density"=plottypes[["geom_density"]])#need to change this to rely no more on externally defined list plottypes.
+              geom<-eval(sym(input$selected_geom))
+         
+        #B- Rescaling: to [0,1]
           
-        #Rescaling
-          
-            #Y variables: many Y, many dta, many geom: only for rescaling
+            #Y variables: many Y, many dta, many geom: only for rescaling 
             L_y<- as.list(input$selected_var2)
             L_y<-lapply(L_y, FUN =sym )
             
@@ -255,7 +243,7 @@ server<-function(input, output){
                                                      to=c(0,1))}                                            
                                             }
                   
-       #Building the Plot: A new way ( To identify linetype and shape as variables with the var they reprseent)
+       #C- Building the Plot: A new way ( To identify linetype and shape as variables with the var they reprseent)
             #filtering:
             if(input$quickfilter_expression!=""){
               
@@ -271,13 +259,13 @@ server<-function(input, output){
             dta_long<-gather(dta1,key=Indicator, value=Value, n1:n2) %>% filter(!is.na(Value))
             
             #the plot
-            gg<-ggplot(dta_long, mapping=aes(x=!!x, y=Value,color=!!color))+geom(aes(linetype=Indicator, shape=Indicator))+
+            gg<-ggplot(dta_long, mapping=aes(x=!!x, y=Value,color=!!color))+geom(aes(linetype=Indicator, shape=Indicator))+theme_bw()
             labs(y=paste(L_y, collapse=""))
             gg
           }#fin else
 })
 
-      #Creating the Plot Output: To download it easily----
+      #Creating the Plot Output (seperated form rendering) : To download it easily----
       output$reactiveplot<-renderPlotly ({ggplotly(Plot()) %>% layout(dragmode="select") })
       
       #Accesing events
@@ -329,7 +317,8 @@ server<-function(input, output){
         output$pivot_var<-renderUI({selectInput("selected_pivot_var", label="choose the vars to be considered in calculations", names( dataset() ), multiple = T  )})
         
         output$calculations<-renderUI({selectizeInput("selected_calculation", label="choose summary stats", 
-                            choices = c("n", "n_distinct", "mean", "sd", "min", "max", "median", "cv"), multiple = T )})#no need for it being interactive..
+                            choices = c("n", "n_distinct", "mean", "sd", "min", "max","range","median", "cv"), 
+                            multiple = T )})#no need for it being interactive..
     
     #2-2- Building reactive PivoTable
       #Creer  PivotTable reactive:
@@ -390,8 +379,25 @@ server<-function(input, output){
     #Rendering as pivottable
         output$pivottable_asdataframe<-renderPivottabler({PivoTable()})
         
+      #Rendering PivoTable as dataframe (DT)...see below  
         
-        #Rendering PivoTable as dataframe (DT)
+ 
+        
+}
+
+
+
+#- III- APPLICATION ----
+A<-shinyApp(ui=ui, server=server)
+
+A
+
+
+#Appendix----
+
+#runApp(A, display.mode = "showcase") this or run in command line: runApp("app-1-lesson4.R", display.mode = "showcase")
+
+#Rendering PivoTable as dataframe (DT)
         
         #output$pivottable_asdataframe<-renderDT({
          #datatable(PivoTable())
@@ -405,20 +411,3 @@ server<-function(input, output){
         
      
         #})
- 
-        
-}
-
-
-
-#- III- APPLICATION ----
-A<-shinyApp(ui=ui, server=server)
-
-A
-
-#runApp(A, display.mode = "showcase") this or run in command line: runApp("app-1-lesson4.R", display.mode = "showcase")
-#?runApp
-#A
-#A<-function(dta){A}
-#A(GGDC_large)
-
