@@ -226,10 +226,10 @@ server<-function(input, output){
           #read the dataset ( the instance resulting from O-1 section: renderDT, thanks to option saveState=TRUE )
           dta<-dataset()[input$DaTaset_rows_all,]
       
-        #A- Reading (transfoming) inputs to be used by dplyr functions(ggplot, filter,etc)
+        #A- Reading (transfoming) inputs to be used by dplyr functions(ggplot, filter,etc): transforming character arguments to symbols! 
 
-              x<-sym(input$selected_var1);color<-sym(input$selected_color);size<-sym(input$selected_size)# transforming character arguments to symbols! 
-              geom<-eval(sym(input$selected_geom))
+              x<-sym(input$selected_var1);color<-sym(input$selected_color);size<-sym(input$selected_size)
+              geom<-eval(sym(input$selected_geom))# il s agit d'une fonction d'ou eval
          
         #B- Rescaling: to [0,1]
           
@@ -259,14 +259,14 @@ server<-function(input, output){
             dta_long<-gather(dta1,key=Indicator, value=Value, n1:n2) %>% filter(!is.na(Value))
             
             #the plot
-            gg<-ggplot(dta_long, mapping=aes(x=!!x, y=Value,color=!!color))+geom(aes(linetype=Indicator, shape=Indicator))+theme_bw()
+            gg<-ggplot(dta_long, mapping=aes(x=!!x, y=Value,color=!!color, size=!!size))+geom(aes(linetype=Indicator, shape=Indicator))+theme_light()
             labs(y=paste(L_y, collapse=""))
             gg
           }#fin else
 })
 
       #Creating the Plot Output (seperated form rendering) : To download it easily----
-      output$reactiveplot<-renderPlotly ({ggplotly(Plot()) %>% layout(dragmode="select") })
+      output$reactiveplot<-renderPlotly ({ggplotly(Plot()) %>% layout(dragmode="zoom") })
       
       #Accesing events
         output$selected<-renderPrint({
